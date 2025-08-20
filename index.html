@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Calculator</title>
+
+  <!-- Viewport & iOS standalone fullscreen -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="theme-color" content="#000000" />
+
+  <!-- Optional: If you add a PNG and prefer not to rely on a screenshot for the icon, uncomment and point to it -->
+  <!-- <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png"> -->
+
+  <style>
+    :root{
+      --bg: #000000;
+      --text: #ffffff;
+      --btn-dark: #333333;
+      --btn-dark-text: #ffffff;
+      --btn-light: #a5a5a5;
+      --btn-light-text: #000000;
+      --btn-op: #ff9f0a;
+      --btn-op-text: #ffffff;
+
+      /* sizing scales */
+      --display-font: clamp(42px, 12vw, 80px);
+      --btn-font: clamp(20px, 5vw, 34px);
+      --btn-radius: 22px;
+      --gap: 10px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden; /* no scrollbars */
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
+      touch-action: manipulation;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      overscroll-behavior: none; /* prevent rubber-band scroll */
+    }
+
+    .app {
+      position: fixed;
+      inset: 0;
+      /* Use the full screen and respect notches/home indicator */
+      padding: calc(env(safe-area-inset-top)) calc(env(safe-area-inset-right)) calc(env(safe-area-inset-bottom)) calc(env(safe-area-inset-left));
+      display: grid;
+      grid-template-rows: 1fr auto;
+      background: var(--bg);
+    }
+
+    .display {
+      display: flex;
+      align-items: end;
+      justify-content: flex-end;
+      padding: 20px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+      font-weight: 300;
+      font-size: var(--display-font);
+      word-break: break-all;
+      min-height: 0;
+    }
+
+    .keypad {
+      padding: 0 10px 10px 10px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-auto-rows: 1fr;
+      gap: var(--gap);
+      /* Make keypad occupy a fixed aspect-friendly space */
+      height: min(72vh, 620px);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      outline: none;
+      border-radius: var(--btn-radius);
+      font-size: var(--btn-font);
+      height: 100%;
+      width: 100%;
+      cursor: pointer;
+      -webkit-tap-highlight-color: rgba(0,0,0,0);
+      transition: transform 0.02s ease-in-out, filter 0.02s ease-in-out;
+    }
+    .btn:active { transform: scale(0.98); filter: brightness(1.1); }
+
+    .btn.dark   { background: var(--btn-dark);   color: var(--btn-dark-text); }
+    .btn.light  { background: var(--btn-light);  color: var(--btn-light-text); }
+    .btn.op     { background: var(--btn-op);     color: var(--btn-op-text);    }
+
+    .btn.zero { grid-column: span 2; justify-content: flex-start; padding-left: 28px; }
+
+    /* Active operator highlight */
+    .btn.op.active {
+      background: #fff;
+      color: var(--btn-op);
+    }
+
+    /* Landscape tweaks: keep everything tidy */
+    @media (orientation: landscape) {
+      .app {
+        grid-template-rows: auto auto;
+      }
+      .display {
+        font-size: clamp(32px, 10vh, 72px);
+      }
+      .keypad {
+        height: auto;
+        grid-auto-rows: 80px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" role="application" aria-label="Calculator">
+    <div class="display" id="display" aria-live="polite">0</div>
+
+    <div class="keypad" role="group" aria-label="Calculator keys">
+      <!-- Row 1 -->
+      <button class="btn light" data-action="clear" id="clearBtn" aria-label="All Clear">AC</button>
+      <button class="btn light" data-action="sign" aria-label="Toggle sign">±</button>
+      <button class="btn light" data-action="percent" aria-label="Percent">%</button>
+      <button class="btn op"    data-op="divide" aria-label="Divide">÷</button>
+
+      <!-- Row 2 -->
+      <button class="btn dark" data-digit="7">7</button>
+      <button class="btn dark" data-digit="8">8</button>
+      <button class="btn dark" data-digit="9">9</button>
+      <button class="btn op"   data-op="multiply" aria-label="Multiply">×</button>
+
+      <!-- Row 3 -->
+      <button class="btn dark" data-digit="4">4</button>
+      <button class="btn dark" data-digit="5">5</button>
+      <button class="btn dark" data-digit="6">6</button>
+      <button class="btn op"   data-op="subtract" aria-label="Subtract">−</button>
+
+      <!-- Row 4 -->
+      <button class="btn dark" data-digit="1">1</button>
+      <button class="btn dark" data-digit="2">2</button>
+      <button class="btn dark" data-digit="3">3</button>
+      <button class="btn op"   data-op="add" aria-label="Add">+</button>
+
+      <!-- Row 5 -->
+      <button class="btn dark zero" data-digit="0" aria-label="Zero">0</button>
+      <button class="btn dark" data-action="decimal" aria-label="Decimal point">.</button>
+      <button class="btn op"  data-action="equals" aria-label="Equals">=</button>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      const displayEl = document.getElementById('display');
+      const clearBtn  = document.getElementById('clearBtn');
+      const keypad    = document.querySelector('.keypad');
+      const opButtons = () => [...document.querySelectorAll('.btn.op[data-op]')];
+
+      const state = {
+        display: '0',
+        firstOperand: null,
+        operator: null,  // 'add' | 'subtract' | 'multiply' | 'divide'
+        waitingForSecond: false,
+        justEvaluated: false,
+      };
+
+      function format(nStr) {
+        if (nStr === 'Infinity' || nStr === '-Infinity' || nStr === 'NaN') return 'Error';
+        if (nStr.includes('e')) return nStr;
+        if (nStr.length > 12 && !nStr.includes('.')) {
+          const n = Number(nStr);
+          return n.toExponential(6).replace('+','');
+        }
+        return nStr;
+      }
+
+      function updateDisplay(value) {
+        state.display = value;
+        displayEl.textContent = format(value);
+      }
+
+      function inputDigit(d) {
+        if (state.waitingForSecond) {
+          updateDisplay(d);
+          state.waitingForSecond = false;
+        } else {
+          updateDisplay(
+            state.display === '0' ? d : (state.display + d)
+          );
+        }
+        clearBtn.textContent = 'C';
+        state.justEvaluated = false;
+        highlightOp(null);
+      }
+
+      function inputDecimal() {
+        if (state.waitingForSecond) {
+          updateDisplay('0.');
+          state.waitingForSecond = false;
+        } else if (!state.display.includes('.')) {
+          updateDisplay(state.display + '.');
+        }
+        clearBtn.textContent = 'C';
+        state.justEvaluated = false;
+        highlightOp(null);
+      }
+
+      function toggleSign() {
+        if (state.display === '0') return;
+        if (state.display.startsWith('-')) {
+          updateDisplay(state.display.slice(1));
+        } else {
+          updateDisplay('-' + state.display);
+        }
+      }
+
+      function toNumber(s) {
+        const n = Number(s);
+        return Number.isFinite(n) ? n : NaN;
+        }
+
+      function percent() {
+        const n = toNumber(state.display);
+        if (!Number.isNaN(n)) {
+          updateDisplay(String(n / 100));
+        }
+      }
+
+      function clear() {
+        if (clearBtn.textContent === 'AC' || state.justEvaluated) {
+          state.firstOperand = null;
+          state.operator = null;
+          state.waitingForSecond = false;
+          highlightOp(null);
+        }
+        updateDisplay('0');
+        clearBtn.textContent = 'AC';
+        state.justEvaluated = false;
+      }
+
+      function compute(a, b, op) {
+        switch (op) {
+          case 'add': return a + b;
+          case 'subtract': return a - b;
+          case 'multiply': return a * b;
+          case 'divide': return b === 0 ? NaN : a / b;
+          default: return b;
+        }
+      }
+
+      function setOperator(op) {
+        const inputValue = toNumber(state.display);
+        if (state.operator && state.waitingForSecond) {
+          state.operator = op;
+          highlightOp(op);
+          return;
+        }
+        if (state.firstOperand == null) {
+          state.firstOperand = inputValue;
+        } else if (!state.waitingForSecond) {
+          const result = compute(state.firstOperand, inputValue, state.operator);
+          state.firstOperand = result;
+          updateDisplay(String(result));
+        }
+        state.operator = op;
+        state.waitingForSecond = true;
+        state.justEvaluated = false;
+        clearBtn.textContent = 'C';
+        highlightOp(op);
+      }
+
+      function equals() {
+        const inputValue = toNumber(state.display);
+        if (state.operator == null) return;
+        if (state.waitingForSecond) {
+          const result = compute(state.firstOperand, state.firstOperand, state.operator);
+          updateDisplay(String(result));
+          state.firstOperand = result;
+        } else {
+          const result = compute(state.firstOperand ?? 0, inputValue, state.operator);
+          updateDisplay(String(result));
+          state.firstOperand = result;
+          state.waitingForSecond = true;
+        }
+        state.justEvaluated = true;
+        highlightOp(null);
+      }
+
+      function highlightOp(opName) {
+        opButtons().forEach(b => b.classList.toggle('active', b.dataset.op === opName));
+      }
+
+      keypad.addEventListener('click', (e) => {
+        const t = e.target.closest('button.btn');
+        if (!t) return;
+
+        if (t.dataset.digit)      return inputDigit(t.dataset.digit);
+        if (t.dataset.action === 'decimal') return inputDecimal();
+        if (t.dataset.action === 'sign')    return toggleSign();
+        if (t.dataset.action === 'percent') return percent();
+        if (t.dataset.action === 'clear')   return clear();
+        if (t.dataset.action === 'equals')  return equals();
+        if (t.dataset.op)                   return setOperator(t.dataset.op);
+      });
+
+      document.addEventListener('gesturestart', (e) => e.preventDefault());
+      updateDisplay('0');
+    })();
+  </script>
+</body>
+</html>
